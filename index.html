@@ -1,0 +1,42 @@
+﻿<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#071c22"><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icons/icon-192.png"><link rel="apple-touch-icon" href="icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Epay"><link rel="stylesheet" href="style.css"><title>Epay | Make a Payment</title></head><body>
+<div class="app"><header class="bar"><div class="brand"><svg viewBox="0 0 24 24" fill="none" stroke="#ffb81c" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="3"/><path d="M3 10h18M16 15h2"/></svg> Epay</div><span class="pill" id="net" hidden>Offline</span></header>
+<main class="sheet">
+<h1>Make a payment</h1><p>Enter the amount you are paying. You'll approve it on your phone.</p>
+<label class="f" for="amount" style="margin-top:22px">Amount (UGX)</label>
+<div class="amt"><span>UGX</span><input id="amount" type="text" inputmode="numeric" placeholder="0" autocomplete="off"></div>
+<label class="f" for="purpose">Payment for (optional)</label>
+<input id="purpose" type="text" placeholder="e.g. Invoice 1024" autocomplete="off">
+<label class="f" for="phone">Mobile money number</label>
+<input id="phone" type="tel" placeholder="07XX XXX XXX" inputmode="numeric" autocomplete="tel">
+<label class="f" for="email">Email for your receipt</label>
+<input id="email" type="email" placeholder="you@example.com" autocomplete="email">
+<div class="spacer"></div>
+<button id="pay">Pay UGX 5,000</button>
+<div class="note"><svg viewBox="0 0 24 24" fill="none" stroke="#12606b" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>You'll get a prompt on your phone. Enter your PIN <b>only on that prompt</b>. Epay never asks for your PIN.</span></div>
+<div class="links"><a href="help.html">How it works</a><button id="install" hidden>Install app</button></div>
+</main></div>
+<script src="app.js"></script>
+<script>
+const PUBLIC_KEY="FLWPUBK-REPLACE_WITH_YOUR_PUBLIC_KEY-X";
+const MIN=1000; // smallest amount you accept (UGX). No maximum is set here.
+const $=id=>document.getElementById(id);
+const amtEl=$("amount"),btn=$("pay");
+const amt=()=>Number(amtEl.value.replace(/\D/g,""))||0;
+const fmt=n=>"UGX "+n.toLocaleString("en-US");
+function label(){btn.textContent=!navigator.onLine?"Offline: connect to pay":amt()?"Pay "+fmt(amt()):"Enter an amount"}
+amtEl.addEventListener("input",()=>{const n=amt();amtEl.value=n?n.toLocaleString("en-US"):"";label()});
+addEventListener("online",label);addEventListener("offline",label);label();
+const loadFlw=()=>new Promise((ok,no)=>{if(window.FlutterwaveCheckout)return ok();const s=document.createElement("script");s.src="https://checkout.flutterwave.com/v3.js";s.onload=ok;s.onerror=no;document.head.appendChild(s)});
+btn.onclick=async()=>{
+  if(!navigator.onLine){alert("You're offline. Connect to the internet to pay.");return;}
+  if(amt()<MIN){alert("Enter an amount of at least "+fmt(MIN));return;}
+  const phone=$("phone").value.trim();
+  const email=$("email").value.trim()||"customer@example.com";
+  const purpose=$("purpose").value.trim();
+  if(!/^(0|256)?7\d{8}$/.test(phone.replace(/\s/g,""))){alert("Enter a valid mobile money number, e.g. 0772123456");return;}
+  try{await loadFlw()}catch(e){alert("Could not reach the payment service. Check your connection and try again.");return;}
+  FlutterwaveCheckout({public_key:PUBLIC_KEY,tx_ref:"TX-"+Date.now(),amount:amt(),currency:"UGX",payment_options:"mobilemoneyuganda",
+    customer:{email,phone_number:phone,name:"Customer"},meta:{purpose},redirect_url:location.href.replace(/[^/]*$/,"")+"status.html",
+    customizations:{title:"Epay",description:purpose||"Epay payment"}});
+};
+</script></body></html>
